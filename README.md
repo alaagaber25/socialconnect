@@ -524,14 +524,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 🌟 Star History
-
-If you find SocialConnect useful, please consider giving it a star ⭐ on GitHub!
-
-[![Star History Chart](https://api.star-history.com/svg?repos=alaagaber25/socialconnect&type=Date)](https://star-history.com/#alaagaber25/socialconnect&Date)
-
----
-
 ## 📋 Quick Reference
 
 ### 💡 Environment Variables Template
@@ -569,8 +561,7 @@ WHATSAPP_GROUP_ID=your-default-group-id
 
 <div align="center">
 
-**Made with ❤️ for the sales and real estate community**
 
-[⭐ Star this repository](https://github.com/alaagaber25/socialconnect) • [🐛 Report Bug](https://github.com/alaagaber25/socialconnect/issues) • [💡 Request Feature](https://github.com/alaagaber25/socialconnect/issues)
+[⭐ Star ](https://github.com/alaagaber25/socialconnect) • [🐛 Report Bug](https://github.com/alaagaber25/socialconnect/issues) • [💡 Request Feature](https://github.com/alaagaber25/socialconnect/issues)
 
 </div>
