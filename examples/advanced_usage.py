@@ -1,4 +1,4 @@
-"""Advanced usage examples for SocialConnect library."""
+"""Simplified WhatsApp usage examples using only the send_message method."""
 
 import os
 import sys
@@ -6,172 +6,345 @@ from pathlib import Path
 
 # Add the parent directory to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from socialconnect import EmailMessenger, WhatsAppMessenger
-from socialconnect.config import SocialConnectConfig
-from socialconnect.core.exceptions import SocialConnectError
-import logging
+
+from socialconnect import WhatsAppMessenger
+from socialconnect.core.exceptions import SocialConnectError, ValidationError
 from dotenv import load_dotenv
+import logging
+
 # Load environment variables from .env file
 load_dotenv()
 
-
-def advanced_email_example():
-    """Advanced email usage with custom configuration."""
-    print("=== Advanced Email Example ===")
-    
-    # Create custom configuration
-    config = SocialConnectConfig()
-    config.update_email_config(
-        sender_email=os.getenv("GMAIL_ADDRESS"),
-        password=os.getenv("GMAIL_APP_PASSWORD"),
-    )
-    
-    # Initialize with custom config
-    email_messenger = EmailMessenger(
-        sender_email=config.email.sender_email,
-        password=config.email.password
-    )
-    
-    # Batch processing example
-    clients_data = [
-        {
-            'client_name': 'Client 1',
-            'phone_number': '+1234567890',
-            'chat_description': 'Interested in studio apartment',
-            'unit_details': {'project_name': 'Project A', 'unit_type': 'Studio'},
-            'client_request': 'Budget conscious buyer'
-        },
-        {
-            'client_name': 'Client 2', 
-            'phone_number': '+0987654321',
-            'chat_description': 'Looking for family apartment',
-            'unit_details': {'project_name': 'Project B', 'unit_type': '3-Bedroom'},
-            'client_request': 'Needs parking space'
-        }
-    ]
-    
-    # Process multiple clients
-    for i, client_data in enumerate(clients_data):
-        try:
-            result = email_messenger.send_message(
-                client_data=client_data,
-                email_addresses=[f"agent{i+1}@company.com"]
-            )
-            print(f"Client {i+1} processed: {result['statistics']['success_rate']}% success")
-        except SocialConnectError as e:
-            print(f"Error processing client {i+1}: {e}")
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 
-def advanced_whatsapp_example():
-    """Advanced WhatsApp usage with error handling."""
-    print("=== Advanced WhatsApp Example ===")
+def single_group_example():
+    """Example of sending to a single group."""
+    print("=== Single Group Example ===")
     
-    # Configure logging
-    logging.basicConfig(level=logging.INFO)
+    whatsapp = WhatsAppMessenger(delay=3)
     
-    # Initialize with custom settings
-    whatsapp_messenger = WhatsAppMessenger(delay=3)
+    customer_info = {
+        'name': 'Ahmed Hassan',
+        'phone': '+20123456789',
+        'chat_summary': 'Interested in 2-bedroom apartment with garden view'
+    }
     
-    # Define customer segments
-    high_value_customers = [
-        {
-            'customer_info': {
-                'name': 'VIP Client',
-                'phone': '+1111111111',
-                'chat_summary': 'High budget luxury seeker'
-            },
-            'unit_info': {
-                'unit_id': 'LUX-001',
-                'type': 'Penthouse',
-                'project': 'Luxury Towers',
-                'price': '$1,000,000',
-                'unit_availability': 'Limited'
-            }
-        }
+    unit_info = {
+        'unit_id': 'APT-205',
+        'type': '2-Bedroom Apartment',
+        'project': 'Green Valley Residence',
+        'price': '2,500,000 EGP',
+        'unit_availability': 'Available'
+    }
+    
+    try:
+        result = whatsapp.send_message(
+            customer_info=customer_info,
+            unit_info=unit_info,
+            recipients=os.getenv("WHATSAPP_GROUP_ID"),
+            message_type="group"
+        )
+        print(f"Single group result: {result['statistics']}")
+    except SocialConnectError as e:
+        print(f"Single group send failed: {e}")
+
+
+def single_individual_example():
+    """Example of sending to a single individual."""
+    print("=== Single Individual Example ===")
+    
+    whatsapp = WhatsAppMessenger(delay=3)
+    
+    customer_info = {
+        'name': 'Sarah Mohamed',
+        'phone': '+201234567890',
+        'chat_summary': 'Looking for studio apartment near metro station'
+    }
+    
+    unit_info = {
+        'unit_id': 'STD-101',
+        'type': 'Studio Apartment',
+        'project': 'Metro Heights',
+        'price': '1,800,000 EGP',
+        'unit_availability': 'Available'
+    }
+    
+    try:
+        result = whatsapp.send_message(
+            customer_info=customer_info,
+            unit_info=unit_info,
+            recipients="+201129563904",
+            message_type="individual"
+        )
+        print(f"Single individual result: {result['statistics']}")
+    except SocialConnectError as e:
+        print(f"Single individual send failed: {e}")
+
+
+def multiple_groups_example():
+    """Example of sending to multiple groups."""
+    print("=== Multiple Groups Example ===")
+    
+    whatsapp = WhatsAppMessenger(delay=3)
+    
+    # High-value client requiring management attention
+    high_value_customer = {
+        'name': 'Omar Khalil',
+        'phone': '+201987654321',
+        'chat_summary': 'High-budget client seeking luxury penthouse - URGENT'
+    }
+    
+    luxury_unit = {
+        'unit_id': 'PH-001',
+        'type': 'Penthouse',
+        'project': 'Elite Towers',
+        'price': '8,000,000 EGP',
+        'unit_availability': 'Exclusive - Last Unit'
+    }
+    
+    # Multiple management groups
+    management_groups = [
+        os.getenv("WHATSAPP_GROUP_ID"),
+        "LcSS6CfDnJo7flzShRMlSm_BACKUP"  # Example backup group
     ]
     
-    regular_customers = [
-        {
-            'customer_info': {
-                'name': 'Regular Client',
-                'phone': '+2222222222',
-                'chat_summary': 'Standard apartment seeker'
-            },
-            'unit_info': {
-                'unit_id': 'STD-001',
-                'type': 'Apartment',
-                'project': 'Standard Complex',
-                'price': '$200,000',
-                'unit_availability': 'Available'
-            }
-        }
+    try:
+        result = whatsapp.send_message(
+            customer_info=high_value_customer,
+            unit_info=luxury_unit,
+            recipients=management_groups,
+            message_type="group"
+        )
+        print(f"Multiple groups result: {result['statistics']}")
+        
+        # Show detailed results
+        for group, details in result['results'].items():
+            status = "✅ Success" if details['success'] else f"❌ Failed: {details['error']}"
+            print(f"  {group}: {status}")
+            
+    except SocialConnectError as e:
+        print(f"Multiple groups send failed: {e}")
+
+
+def multiple_individuals_example():
+    """Example of sending to multiple individuals."""
+    print("=== Multiple Individuals Example ===")
+    
+    whatsapp = WhatsAppMessenger(delay=3)
+    
+    customer_info = {
+        'name': 'Fatma Ali',
+        'phone': '+201555777888',
+        'chat_summary': 'Family looking for 3-bedroom apartment with parking'
+    }
+    
+    unit_info = {
+        'unit_id': 'FAM-301',
+        'type': '3-Bedroom Apartment',
+        'project': 'Family Gardens',
+        'price': '3,200,000 EGP',
+        'unit_availability': 'Available with parking'
+    }
+    
+    # Sales team members
+    sales_team = [
+        "+201129563904",
+        "+201003869531", 
+        "+201555666777"
     ]
     
-    # Process high-value customers with priority
-    for customer_data in high_value_customers:
-        try:
-            # Send to management group for high-value clients
-            result = whatsapp_messenger.send_message(
-                customer_info=customer_data['customer_info'],
-                unit_info=customer_data['unit_info'],
-                recipients=os.getenv("WHATSAPP_GROUP_ID"),
-                message_type="group"
-            )
-            print(f"High-value client alert sent: {result['statistics']}")
-        except Exception as e:
-            print(f"Failed to send high-value alert: {e}")
-    
-    
-    
-    # Process regular customers
-    sales_agents = ["+201003869531", "+201129563904"]
-    
-    for customer_data in regular_customers:
-        try:
-            result = whatsapp_messenger.send_message(
-                customer_info=customer_data['customer_info'],
-                unit_info=customer_data['unit_info'],
-                recipients=sales_agents,
-                message_type="individual"
-            )
-            print(f"Regular client alerts sent: {result['statistics']}")
-        except Exception as e:
-            print(f"Failed to send regular alerts: {e}")
+    try:
+        result = whatsapp.send_message(
+            customer_info=customer_info,
+            unit_info=unit_info,
+            recipients=sales_team,
+            message_type="individual"
+        )
+        print(f"Multiple individuals result: {result['statistics']}")
+        
+        # Show detailed results
+        for agent, details in result['results'].items():
+            status = "✅ Success" if details['success'] else f"❌ Failed: {details['error']}"
+            print(f"  {agent}: {status}")
+            
+    except SocialConnectError as e:
+        print(f"Multiple individuals send failed: {e}")
 
 
 def error_handling_example():
-    """Example of comprehensive error handling."""
+    """Example of error handling with invalid recipients."""
     print("=== Error Handling Example ===")
     
-    try:
-        # This will raise AuthenticationError if no credentials
-        email_messenger = EmailMessenger()
-    except SocialConnectError as e:
-        print(f"Authentication error: {e}")
-        # Fallback to environment variables or manual input
-        email_messenger = EmailMessenger("fallback@example.com", "password")
+    whatsapp = WhatsAppMessenger(delay=2)
     
-    # Test with invalid data
-    invalid_client_data = {
-        'client_name': None,  # Invalid
-        'phone_number': 'invalid-phone',  # Invalid
-        'unit_details': {}  # Empty
+    customer_info = {
+        'name': 'Test Customer',
+        'phone': '+201111111111',
+        'chat_summary': 'Test inquiry for error handling demonstration'
     }
     
-    result = email_messenger.send_message(
-        client_data=invalid_client_data,
-        email_addresses=["invalid-email"]  # Invalid
-    )
+    unit_info = {
+        'unit_id': 'TEST-001',
+        'type': 'Test Unit',
+        'project': 'Test Project',
+        'price': '1,000,000 EGP',
+        'unit_availability': 'Testing'
+    }
     
-    # Check results and handle failures
-    for email, result_data in result['results'].items():
-        if not result_data['success']:
-            print(f"Failed to send to {email}: {result_data['error']}")
+    # Mix of valid and invalid phone numbers
+    mixed_recipients = [
+        "+201129563904",  # Valid
+        "invalid-phone",  # Invalid format
+        "+201003869531",  # Valid
+        "",               # Empty string
+        "+201555666777"   # Valid
+    ]
     
-    print(f"Overall success rate: {result['statistics']['success_rate']}%")
+    try:
+        result = whatsapp.send_message(
+            customer_info=customer_info,
+            unit_info=unit_info,
+            recipients=mixed_recipients,
+            message_type="individual"
+        )
+        
+        print(f"Error handling result: {result['statistics']}")
+        print("\nDetailed results:")
+        
+        for recipient, details in result['results'].items():
+            if details['success']:
+                print(f"  ✅ {recipient}: Message sent successfully")
+            else:
+                print(f"  ❌ {recipient}: Failed - {details['error']}")
+                
+    except ValidationError as e:
+        print(f"Validation error: {e}")
+    except SocialConnectError as e:
+        print(f"General error: {e}")
+
+
+def workflow_example():
+    """Example showing a complete workflow with different message types."""
+    print("=== Complete Workflow Example ===")
+    
+    whatsapp = WhatsAppMessenger(delay=3)
+    
+    # Premium investment opportunity
+    investment_customer = {
+        'name': 'Mohamed Abdelrahman',
+        'phone': '+201888999000',
+        'chat_summary': 'Investment client interested in multiple units for rental portfolio'
+    }
+    
+    investment_unit = {
+        'unit_id': 'INV-PACK-001',
+        'type': 'Investment Package (5 Units)',
+        'project': 'Rental Complex Pro',
+        'price': '15,000,000 EGP',
+        'unit_availability': 'Investment Opportunity - Limited Time'
+    }
+    
+    print("Step 1: Notify management groups...")
+    try:
+        management_result = whatsapp.send_message(
+            customer_info=investment_customer,
+            unit_info=investment_unit,
+            recipients=[os.getenv("WHATSAPP_GROUP_ID")],
+            message_type="group"
+        )
+        print(f"Management notification: {management_result['statistics']['success_rate']}% success")
+    except Exception as e:
+        print(f"Management notification failed: {e}")
+    
+    print("Step 2: Alert senior sales agents...")
+    try:
+        agents_result = whatsapp.send_message(
+            customer_info=investment_customer,
+            unit_info=investment_unit,
+            recipients=["+201129563904", "+201003869531"],
+            message_type="individual"
+        )
+        print(f"Agent alerts: {agents_result['statistics']['success_rate']}% success")
+    except Exception as e:
+        print(f"Agent alerts failed: {e}")
+    
+    print("Workflow completed!")
+
+
+def validation_example():
+    """Example showing input validation."""
+    print("=== Validation Example ===")
+    
+    whatsapp = WhatsAppMessenger(delay=2)
+    
+    customer_info = {
+        'name': 'Validation Test',
+        'phone': '+201000000000',
+        'chat_summary': 'Testing validation features'
+    }
+    
+    unit_info = {
+        'unit_id': 'VAL-001',
+        'type': 'Validation Unit',
+        'project': 'Validation Project',
+        'price': '1,000,000 EGP',
+        'unit_availability': 'For Testing'
+    }
+    
+    # Test invalid message type
+    try:
+        whatsapp.send_message(
+            customer_info=customer_info,
+            unit_info=unit_info,
+            recipients=["+201129563904"],
+            message_type="invalid_type"
+        )
+    except ValidationError as e:
+        print(f"✅ Caught invalid message type: {e}")
+    
+    # Test empty recipients
+    try:
+        whatsapp.send_message(
+            customer_info=customer_info,
+            unit_info=unit_info,
+            recipients=[],
+            message_type="individual"
+        )
+    except ValidationError as e:
+        print(f"✅ Caught empty recipients: {e}")
+    
+    # Test valid input
+    try:
+        result = whatsapp.send_message(
+            customer_info=customer_info,
+            unit_info=unit_info,
+            recipients=["+201129563904"],
+            message_type="individual"
+        )
+        print(f"✅ Valid input processed: {result['statistics']['success_rate']}% success")
+    except Exception as e:
+        print(f"❌ Unexpected error with valid input: {e}")
 
 
 if __name__ == "__main__":
-    advanced_email_example()
-    advanced_whatsapp_example()
-    error_handling_example()
+    examples = [
+        single_group_example,
+        single_individual_example,
+        multiple_groups_example,
+        multiple_individuals_example,
+        error_handling_example,
+        workflow_example,
+        validation_example
+    ]
+    
+    for i, example in enumerate(examples, 1):
+        try:
+            example()
+            if i < len(examples):
+                print("\n" + "="*60 + "\n")
+        except Exception as e:
+            print(f"Example {i} failed: {e}")
+            if i < len(examples):
+                print("\n" + "="*60 + "\n")

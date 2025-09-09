@@ -1,4 +1,4 @@
-"""WhatsApp messenger implementation."""
+"""Simplified WhatsApp messenger implementation with essential functionality."""
 
 import pywhatkit as kit
 import pyperclip
@@ -14,17 +14,19 @@ from .formatters import MessageFormatter
 
 
 class WhatsAppMessenger(BaseMessenger):
-    """A WhatsApp messaging system for sales teams to send customer interest alerts."""
+    """Simplified WhatsApp messaging system for sales teams."""
     
-    def __init__(self, delay: int = 5):
+    def __init__(self, delay: int = 5, close_tab: bool = True):
         """
         Initialize the messenger with settings.
         
         Args:
             delay: Default delay between actions in seconds
+            close_tab: Whether to close WhatsApp tabs after sending
         """
         super().__init__("WhatsAppMessenger")
         self.delay = delay
+        self.close_tab = close_tab
         self.formatter = MessageFormatter()
         
     def validate_config(self) -> bool:
@@ -32,112 +34,103 @@ class WhatsAppMessenger(BaseMessenger):
         # WhatsApp messenger doesn't need special configuration
         return True
     
-    def _send_single_message(self, message: str, group_id: str = None, 
-                           phone_number: str = None) -> bool:
+    def send_message(self, customer_info: Dict, unit_info: Dict, 
+                    recipients: Union[str, List[str]], 
+                    message_type: str = "individual") -> Dict[str, Any]:
         """
-        Base method for sending WhatsApp messages.
-        
-        Args:
-            message: Message content to send
-            group_id: WhatsApp group ID (for group messages)
-            phone_number: Phone number (for individual messages)
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            if not group_id and not phone_number:
-                raise ValidationError("Either group_id or phone_number must be provided")
-            
-            if phone_number and not validate_phone_number(phone_number):
-                raise ValidationError(f"Invalid phone number format: {phone_number}")
-            
-            # Copy message to clipboard
-            pyperclip.copy(message)
-            
-            # Send message based on recipient type
-            if group_id:
-                kit.sendwhatmsg_to_group_instantly(group_id, " ")
-                recipient = f"group {group_id}"
-            else:
-                kit.sendwhatmsg_instantly(phone_number, " ")
-                recipient = phone_number
-            
-            # Wait for WhatsApp to load
-            time.sleep(self.delay)
-            
-            # Paste and send message
-            pyautogui.hotkey("ctrl", "v")
-            pyautogui.press("enter")
-            time.sleep(2)
-            
-            # Close WhatsApp tab
-            pyautogui.hotkey("ctrl", "w")
-            
-            self._log_success(recipient, "WhatsApp message")
-            return True
-            
-        except Exception as e:
-            recipient = group_id or phone_number or "unknown"
-            self._log_error(recipient, str(e), "WhatsApp message")
-            return False
-    
-    def send_to_group(self, customer_info: Dict, unit_info: Dict, group_id: str) -> Dict[str, Any]:
-        """
-        Send customer interest alert to a WhatsApp group.
+        Send customer interest message to recipients (groups or individuals).
         
         Args:
             customer_info: Customer information
-            unit_info: Unit information
-            group_id: WhatsApp group ID to send the message to
-            
-        Returns:
-            Dictionary with send results
-        """
-        message = self.formatter.create_customer_interest_message(customer_info, unit_info)
-        success = self._send_single_message(message, group_id=group_id)
-        
-        return {
-            'results': {group_id: {'success': success, 'error': None if success else 'Send failed'}},
-            'statistics': {
-                'total_sent': 1,
-                'successful': 1 if success else 0,
-                'failed': 0 if success else 1,
-                'success_rate': 100.0 if success else 0.0
-            }
-        }
-    
-    def send_to_individuals(self, customer_info: Dict, unit_info: Dict, 
-                          phone_numbers: Union[str, List[str]]) -> Dict[str, Any]:
-        """
-        Send customer interest alert to individual(s).
-        
-        Args:
-            customer_info: Customer information
-            unit_info: Unit information
-            phone_numbers: Single phone number or list of phone numbers
+            unit_info: Unit information  
+            recipients: Group ID(s) or phone number(s) - can be string or list
+            message_type: "group" or "individual"
             
         Returns:
             Dictionary with send results and statistics
         """
-        if isinstance(phone_numbers, str):
-            phone_numbers = [phone_numbers]
+        # Convert single recipient to list for uniform processing
+        if isinstance(recipients, str):
+            recipients = [recipients]
         
+        if not recipients:
+            raise ValidationError("At least one recipient must be provided")
+        
+        # Validate message type
+        if message_type.lower() not in ["group", "individual"]:
+            raise ValidationError(f"Invalid message_type: {message_type}. Must be 'group' or 'individual'")
+        
+        is_group = message_type.lower() == "group"
+        
+        # Create message
         message = self.formatter.create_customer_interest_message(customer_info, unit_info)
-        results = {}
         
-        for phone_number in phone_numbers:
+        # Process all recipients
+        results = {}
+        successful_sends = 0
+        
+        for i, recipient in enumerate(recipients):
+            self.logger.info(f"Sending to {recipient} ({i+1}/{len(recipients)})")
+            
             try:
-                success = self._send_single_message(message, phone_number=phone_number)
-                results[phone_number] = {'success': success, 'error': None}
-                # Small delay between individual messages to avoid issues
-                time.sleep(2)
+                # Validate recipient based on type
+                if not recipient:
+                    raise ValidationError("Recipient cannot be empty")
+                
+                if not is_group and not validate_phone_number(recipient):
+                    raise ValidationError(f"Invalid phone number format: {recipient}")
+                
+                # Copy message to clipboard
+                pyperclip.copy(message)
+                
+                # Send message based on recipient type
+                if is_group:
+                    kit.sendwhatmsg_to_group_instantly(recipient, " ")
+                    recipient_type = "group"
+                else:
+                    kit.sendwhatmsg_instantly(recipient, " ")
+                    recipient_type = "individual"
+                
+                # Wait for WhatsApp to load
+                time.sleep(self.delay)
+                
+                # Paste and send message
+                pyautogui.hotkey("ctrl", "v")
+                pyautogui.press("enter")
+                time.sleep(1)
+                
+                # Close WhatsApp tab if configured
+                if self.close_tab:
+                    pyautogui.hotkey("ctrl", "w")
+                    time.sleep(0.5)
+                
+                self._log_success(recipient, f"WhatsApp {recipient_type} message")
+                results[recipient] = {
+                    'success': True,
+                    'error': None,
+                    'timestamp': datetime.now().isoformat(),
+                    'type': recipient_type
+                }
+                successful_sends += 1
+                
+                # Add delay between messages to avoid rate limiting
+                if i < len(recipients) - 1:  # Don't delay after the last message
+                    time.sleep(2)
+                    
             except Exception as e:
-                results[phone_number] = {'success': False, 'error': str(e)}
+                self._log_error(recipient, str(e), "WhatsApp message")
+                results[recipient] = {
+                    'success': False,
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat(),
+                    'type': 'group' if is_group else 'individual'
+                }
         
         # Calculate statistics
-        successful_sends = sum(1 for r in results.values() if r['success'])
-        total_sends = len(results)
+        total_sends = len(recipients)
+        success_rate = (successful_sends / total_sends) * 100 if total_sends > 0 else 0
+        
+        self.logger.info(f"WhatsApp sending complete: {successful_sends}/{total_sends} successful")
         
         return {
             'results': results,
@@ -145,28 +138,8 @@ class WhatsAppMessenger(BaseMessenger):
                 'total_sent': total_sends,
                 'successful': successful_sends,
                 'failed': total_sends - successful_sends,
-                'success_rate': (successful_sends / total_sends) * 100 if total_sends > 0 else 0
-            }
+                'success_rate': round(success_rate, 2),
+                'recipient_type': message_type.lower()
+            },
+            'timestamp': datetime.now().isoformat()
         }
-    
-    def send_message(self, customer_info: Dict, unit_info: Dict, 
-                    recipients: Union[str, List[str]], 
-                    message_type: str = "individual") -> Dict[str, Any]:
-        """
-        Universal send method that handles both groups and individuals.
-        
-        Args:
-            customer_info: Customer information
-            unit_info: Unit information  
-            recipients: Group ID or phone number(s)
-            message_type: "group" or "individual"
-            
-        Returns:
-            Dictionary with send results and statistics
-        """
-        if message_type == "group":
-            if isinstance(recipients, list):
-                raise ValidationError("Group messaging only supports single group ID")
-            return self.send_to_group(customer_info, unit_info, recipients)
-        else:
-            return self.send_to_individuals(customer_info, unit_info, recipients)
